@@ -23,11 +23,12 @@ test('invite codes and team recovery survive a round without disclosing credenti
   assert.equal(publicState(room, recovered.token).self.timeline.length, 1);
   const visible = JSON.stringify(publicState(room, teams[1]));
   assert.ok(!visible.includes(room.hostToken));
-  assert.ok(!visible.includes(room.djToken));
+  assert.equal(publicState(room, room.hostToken).djToken, undefined);
   assert.ok(!visible.includes(room.teams[2].recovery));
   assert.ok(!visible.includes(room.round.track.title));
   assert.equal(publicState(room, room.hostToken).round.track, undefined);
-  assert.equal(publicState(room, room.djToken).round.track.title, room.round.track.title);
+  room.djToken = 'obsolete-token';
+  assert.throws(() => publicState(room, room.djToken), /ongeldig/);
   assert.equal(publicState(room, '').teams, undefined);
 });
 
@@ -98,27 +99,6 @@ test('an equal year can be placed on either side and a correct placement wins fi
   assert.equal(room.teams[1].coins, 1);
 });
 
-test('the playlist uses an external Spotify URL and keeps DJ-entered data private until reveal', () => {
-  const playlist = 'https://open.spotify.com/playlist/1234567890123456789012?si=trackers';
-  const { room, host, team, teams } = fixture(2, { deck: 'playlist', target: 5, playlist });
-  host('next');
-  assert.equal(room.round.track, null);
-  assert.equal(room.settings.playlist, playlist.split('?')[0]);
-  const input = { action: 'open', round: room.round.id, title: 'Playlistnummer', artist: 'Artiest', year: '2004' };
-  assert.throws(() => apply(room, room.djToken, { ...input, year: '' }), /uitgavejaar/);
-  assert.throws(() => apply(room, room.djToken, { ...input, link: 'https://example.com/track/123' }), /Spotify-tracklink/);
-  assert.throws(() => apply(room, teams[0], input), /mag deze actie niet/);
-  apply(room, room.djToken, input);
-  const guestTrack = publicState(room, teams[0]).round;
-  assert.equal(guestTrack.hasTrack, true);
-  assert.equal(guestTrack.track, undefined);
-  team(0, 'place', { gap: 1 });
-  room.round.stealUntil = Date.now() - 1;
-  assert.throws(() => team(1, 'steal', { gap: 0 }), /steeltijd is voorbij/);
-  assert.equal(advanceRoom(room), true);
-  assert.equal(publicState(room, teams[0]).round.result.track.title, 'Playlistnummer');
-});
-
 test('lobby validates teams and settings and stops admitting new teams once started', () => {
   const room = newRoom();
   const team = apply(room, '', { action: 'join', name: 'Luid' });
@@ -128,7 +108,7 @@ test('lobby validates teams and settings and stops admitting new teams once star
   apply(room, '', { action: 'join', name: 'Stil' });
   assert.throws(() => apply(room, room.hostToken, {
     action: 'start', settings: { deck: 'playlist', target: 5, playlist: 'https://example.org' }
-  }), /Spotify-playlistlink/);
+  }), /geldig kaartdoel/);
   apply(room, room.hostToken, { action: 'start' });
   assert.throws(() => apply(room, '', { action: 'join', name: 'Te laat' }), /loopt al/);
 });

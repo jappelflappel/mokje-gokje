@@ -115,9 +115,13 @@ function nextControl(state) {
   return `<div class="stage-actions">${button(state.remaining === 0 ? 'Bekijk eindstand' : 'Volgende nummer', 'next')}</div>`;
 }
 
-function stageText(state, urls, ui) {
+function stageText(state, ui) {
   const team = activeTeam(state);
   const result = state.round?.result;
+  if (state.settings.deck === 'playlist' && !['lobby', 'finished'].includes(state.phase)) {
+    return `<h2>Start een nieuw spel</h2><p>Deze kamer gebruikt een eigen afspeellijst. Start een nieuw spel met de vaste mix.</p>
+      <button type="button" class="button primary" data-tool="new">Nieuw spel</button>`;
+  }
   switch (state.phase) {
     case 'lobby':
       return `${badge('Lobby')}<h2>Wacht op teams</h2>
@@ -129,11 +133,11 @@ function stageText(state, urls, ui) {
         ${nextControl(state)}`;
     case 'cue':
       return `${badge('Nummer klaar', 'blue')}<h2>Zet Spotify aan</h2>
-        <p>${h(team.name)} is aan de beurt. ${state.spotifyCurrent ? 'Start het nummer en bevestig zodra de muziek speelt.' : 'Laat de kaart invoeren op het DJ-scherm.'}</p>
+        <p>${h(team.name)} is aan de beurt. Start het nummer en bevestig zodra de muziek speelt.</p>
         <div class="stage-actions">${state.spotifyCurrent ? `${button('Muziek speelt', 'open')}
           ${spotifyLink(state.spotifyCurrent, 'Open Spotify opnieuw')}
           ${spotifyLink(state.spotifyCurrent.replace('spotify:track:', 'https://open.spotify.com/track/'), 'Open webspeler', 'text-button')}`
-          : `<a class="button primary" href="${h(urls.dj)}" target="_blank" rel="noopener noreferrer">Open DJ-scherm</a>`}
+          : ''}
         ${button('Sla nummer over', 'skip', 'text-button')}</div>`;
     case 'guess':
       return `${badge('Plaatsen', 'blue')}<h2>${h(team.name)}</h2>
@@ -164,22 +168,11 @@ function stageText(state, urls, ui) {
 }
 
 function setup(state, draft) {
-  const deck = draft?.deck ?? state.settings.deck;
   const target = draft?.target ?? state.settings.target;
-  const playlist = draft?.playlist ?? state.settings.playlist;
   return `<section class="panel setup" aria-labelledby="setup-heading">
     <div class="panel-title"><h2 id="setup-heading">Spelinstellingen</h2></div>
     <form id="setup-form" class="setup-grid">
-      <fieldset><legend>Spotify</legend>
-        <div class="segmented">
-          <label><input type="radio" name="deck" value="mix"${checked(deck === 'mix')}><span>Mokje Gokje-mix</span></label>
-          <label><input type="radio" name="deck" value="playlist"${checked(deck === 'playlist')}><span>Eigen playlist</span></label>
-        </div>
-        ${deck === 'playlist'
-          ? `<label class="field playlist-field" for="playlist">Spotify-playlistlink<input id="playlist" name="playlist" type="url" placeholder="https://open.spotify.com/playlist/…" value="${h(playlist)}" maxlength="200"></label>`
-          : '<p class="field-note">69 hits uit 1961–2025. De host opent elk nummer in Spotify.</p>'}
-        ${deck === 'playlist' ? '<p class="field-note">De DJ ziet het antwoord en voert de trackgegevens per ronde in.</p>' : ''}
-      </fieldset>
+      <p class="field-note">De vaste mix bevat 69 nummers uit 1961–2025.</p>
       <fieldset><legend>Kaarten om te winnen</legend>
         <div class="segmented numbers">
           ${[5, 7, 10].map(number => `<label><input type="radio" name="target" value="${number}"${checked(target === number)}><span>${number}</span></label>`).join('')}
@@ -277,7 +270,7 @@ export function hostView(state, urls, ui) {
       <div class="host-grid">
         <div class="host-left">
           ${ui.mug.open ? mugStage(state, ui.mug) : `<section class="stage phase-${state.phase}" aria-label="Huidige beurt">
-            <div class="stage-copy">${stageText(state, urls, ui)}</div>
+            <div class="stage-copy">${stageText(state, ui)}</div>
             ${vinyl(['guess', 'steal'].includes(state.phase), state.round?.result)}
           </section>`}
           ${state.phase === 'lobby' ? setup(state, ui.setup) : ''}
@@ -332,7 +325,7 @@ function teamPrompt(state, ownTurn, ownSteal, canPlace, canSteal) {
   switch (state.phase) {
     case 'lobby': return ['Jullie staan klaar', 'Wacht tot de host het spel begint.'];
     case 'ready': return [ownTurn ? 'Jullie zijn aan de beurt' : active.name + ' is aan de beurt', 'De host trekt het volgende nummer.'];
-    case 'cue': return [ownTurn ? 'Jullie zijn aan de beurt' : active.name + ' is aan de beurt', 'Luister zodra de DJ het nummer start.'];
+    case 'cue': return [ownTurn ? 'Jullie zijn aan de beurt' : active.name + ' is aan de beurt', 'Luister zodra de muziek start.'];
     case 'guess': return canPlace
       ? ['Waar hoort dit nummer?', 'Tik op een vak in je tijdlijn en bevestig je keuze.']
       : [active.name + ' plaatst', 'Na de keuze van dit team kun je een ander vak claimen.'];
@@ -387,41 +380,6 @@ export function teamView(state, ui) {
       <div class="tray-label">${ui.gap === null ? 'Kies een vak' : h(gapLabel(canPlace ? state.self.timeline : state.activeTimeline, ui.gap))}</div>
       ${button(canPlace ? 'Bevestig plaatsing' : 'Steel voor 1 munt', canPlace ? 'place' : 'steal', 'primary', ui.gap === null)}
     </div></div>` : ''}`;
-}
-
-export function spotifySearch(track) {
-  return 'https://open.spotify.com/search/' + encodeURIComponent(track.title + ' ' + track.artist);
-}
-
-export function djView(state, ui) {
-  const track = state.round?.track;
-  const playlist = state.settings.deck === 'playlist';
-  const cue = state.phase === 'cue';
-  const active = activeTeam(state);
-  const dj = ui.dj;
-  return `${header('DJ')}
-    <main id="main" class="wrap dj-screen">
-      <div class="screen-heading"><div><h1>DJ-scherm</h1><p>Speel de muziek af in Spotify.</p></div></div>
-      <section class="panel dj-panel">
-        ${badge(actions[state.phase], 'blue')}
-        <h2>${active ? h(active.name) : 'Wacht op de host'}</h2>
-        ${playlist && state.settings.playlist ? `<p><a class="button soft" href="${h(state.settings.playlist)}">Open Spotify-app</a></p>` : ''}
-        ${track ? `<div class="dj-track">${card(track)}
-          <a class="button primary" href="${h(track.link || spotifySearch(track))}" target="_blank" rel="noopener noreferrer">${track.link ? 'Open in Spotify' : 'Zoek in Spotify'}</a>
-        </div>` : ''}
-        ${cue && playlist ? `<p>Speel een nummer uit de playlist en vul de kaart in. Gebruik het jaar waarin deze versie voor het eerst uitkwam.</p>
-          <form id="dj-form" class="dj-form">
-            <label class="field" for="dj-title">Titel<input id="dj-title" name="title" value="${h(dj.title)}" maxlength="110" required></label>
-            <label class="field" for="dj-artist">Artiest<input id="dj-artist" name="artist" value="${h(dj.artist)}" maxlength="90" required></label>
-            <label class="field" for="dj-year">Uitgavejaar<input id="dj-year" name="year" value="${h(dj.year)}" type="number" inputmode="numeric" min="1900" max="${new Date().getFullYear()}" required></label>
-            <label class="field" for="dj-link">Spotify-tracklink <small>optioneel</small><input id="dj-link" name="link" type="url" value="${h(dj.link)}" maxlength="200"></label>
-            <button class="button primary" type="submit">Teams laten plaatsen</button>
-          </form>` : ''}
-        ${cue && !playlist && track ? `<p>Start het nummer in Spotify en open daarna de plaatsing.</p>${button('Teams laten plaatsen', 'open', 'soft')}` : ''}
-        ${!track && !cue ? '<p>Het volgende nummer verschijnt zodra de host het trekt.</p>' : ''}
-        ${['guess', 'steal'].includes(state.phase) ? '<p>Het scherm van de teams is open.</p>' : ''}
-      </section>
-    </main>`;
 }
 
 export function errorView(title, message, mode) {

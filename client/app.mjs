@@ -1,6 +1,6 @@
 import QRCode from 'qrcode';
 import { GAME_SERVER } from './config.mjs';
-import { djView, errorView, guestView, h, hostView, takenGaps, teamView } from './view.mjs';
+import { errorView, guestView, h, hostView, takenGaps, teamView } from './view.mjs';
 
 const root = document.getElementById('app');
 const popup = document.getElementById('dialog');
@@ -8,10 +8,8 @@ const notice = document.getElementById('notice');
 const home = new URL('.', location.href);
 const api = location.hostname === 'jappelflappel.github.io' ? GAME_SERVER : '';
 const codePattern = /^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{7}$/u;
-const tokenPattern = /^[a-f0-9]{40}$/u;
-const blankDj = () => ({ title: '', artist: '', year: '', link: '' });
 const blankMug = () => ({ open: false, teams: null, rolling: false, winner: null, angle: 0, from: 0, startedAt: 0 });
-const ui = { recover: false, entryError: '', entryValue: '', setup: null, dj: blankDj(), gap: null, bonus: false, mug: blankMug() };
+const ui = { recover: false, entryError: '', entryValue: '', setup: null, gap: null, bonus: false, mug: blankMug() };
 
 let state = null;
 let revision = 0;
@@ -33,7 +31,7 @@ const key = (part, room = '') => 'terugspoel:' + part + ':' + room;
 
 function remembered(part, room = '') {
   try {
-    const storage = part === 'dj' ? sessionStorage : localStorage;
+    const storage = localStorage;
     return storage.getItem(key(part, room)) || '';
   } catch {
     return '';
@@ -42,7 +40,7 @@ function remembered(part, room = '') {
 
 function remember(part, room, value) {
   try {
-    const storage = part === 'dj' ? sessionStorage : localStorage;
+    const storage = localStorage;
     if (value) storage.setItem(key(part, room), value);
     else storage.removeItem(key(part, room));
   } catch {
@@ -88,15 +86,14 @@ async function request(path, { credential = '', data, create = false } = {}) {
   }
 }
 
-function roomURL(mode, room, secret = '') {
+function roomURL(mode, room) {
   const url = new URL(home);
   url.searchParams.set(mode, room);
-  if (secret) url.hash = secret;
   return url.href;
 }
 
 function urls() {
-  return { join: roomURL('join', code), dj: roomURL('dj', code, state?.djToken) };
+  return { join: roomURL('join', code) };
 }
 
 function readFocus() {
@@ -132,7 +129,6 @@ function render() {
   const qr = document.getElementById('room-qr');
   const horizontal = root.querySelector('.timeline.horizontal')?.scrollLeft ?? 0;
   if (role === 'host' && state?.role === 'host') root.innerHTML = hostView(state, urls(), ui);
-  else if (role === 'dj' && state?.role === 'dj') root.innerHTML = djView(state, ui);
   else if (role === 'team' && state?.role === 'team') root.innerHTML = teamView(state, ui);
   else if (role === 'team') root.innerHTML = guestView(state, ui);
 
@@ -201,7 +197,6 @@ function useResult(result) {
   if (lastRound !== round) {
     ui.gap = null;
     ui.bonus = false;
-    ui.dj = blankDj();
   }
   lastRound = round;
   if (state.phase === 'steal' && ui.gap !== null && takenGaps(state).has(ui.gap)) {
@@ -318,19 +313,9 @@ async function openRoute() {
       return;
     }
     token = remembered('team', code);
-  } else if (params.has('dj')) {
-    role = 'dj';
-    code = params.get('dj').trim().toUpperCase();
-    const passed = location.hash.slice(1);
-    token = tokenPattern.test(passed) ? passed : remembered('dj', code);
-    if (token) remember('dj', code, token);
-    history.replaceState(null, '', roomURL('dj', code));
-    if (!token || !codePattern.test(code)) {
-      showError(new RequestError(401, 'Open de privé-DJ-link opnieuw vanuit het hostscherm.'));
-      return;
-    }
   } else {
-    code = (params.get('host') || remembered('last-host')).trim().toUpperCase();
+    code = (params.get('host') || params.get('dj') || remembered('last-host')).trim().toUpperCase();
+    if (params.has('dj')) history.replaceState(null, '', home);
     token = remembered('host', code);
     if (!token || !codePattern.test(code)) { await createRoom(); return; }
     history.replaceState(null, '', roomURL('host', code));
@@ -432,11 +417,7 @@ function manage() {
     return `<div class="manage-row"><b>${h(team.name)}</b><span class="room-code">${h(recovery)}</span>
       ${state.phase === 'lobby' ? `<button class="button soft" type="button" data-remove="${h(team.id)}" aria-label="${h(team.name)} verwijderen">Verwijder</button>` : ''}</div>`;
   }).join('');
-  showDialog('Spelbeheer', `<div class="dialog-actions">
-    <a class="button primary" href="${h(urls().dj)}" target="_blank" rel="noopener noreferrer">Open DJ-scherm</a>
-    <button class="button soft" type="button" data-tool="copy-dj">Kopieer privé-DJ-link</button>
-  </div><p>Open deze link op het apparaat waarmee de DJ Spotify bedient. Deze weergave toont de antwoorden.</p>
-  ${rows ? `<div><b>Teamcodes om te hervatten</b>${rows}</div>` : ''}
+  showDialog('Spelbeheer', `  ${rows ? `<div><b>Teamcodes om te hervatten</b>${rows}</div>` : ''}
   <div class="dialog-actions">
     <button class="button soft" type="button" data-tool="new">Nieuw spel</button>
     ${['ready', 'result'].includes(state.phase)
@@ -447,7 +428,7 @@ function manage() {
 function help() {
   showDialog('Zo speel je Mokje Gokje', `<ol>
     <li><b>Sluit aan.</b> Scan de QR-code met één telefoon per team. Ieder team begint met één kaart en twee munten.</li>
-    <li><b>Luister.</b> Open in de mix het nummer via Volgende nummer en start de muziek in Spotify. Bij een eigen playlist voert de DJ de kaartgegevens in.</li>
+    <li><b>Luister.</b> Open het nummer via Volgende nummer en start de muziek in Spotify.</li>
     <li><b>Plaats.</b> Het team dat aan de beurt is, kiest waar het nummer chronologisch hoort. Een gelijk jaar mag aan beide kanten.</li>
     <li><b>Steel.</b> Andere teams hebben 12 seconden om een vrij vak te claimen voor één munt of te passen. Alleen als de eerste plaatsing fout is, kan een goede steelpoging de kaart winnen.</li>
     <li><b>Uitslag.</b> De uitslag verschijnt zodra de steelkans sluit. De host kan het spelende team een bonusmunt geven. Het eerste team dat het ingestelde kaartdoel haalt, wint.</li>
@@ -464,12 +445,7 @@ function start() {
   const form = document.getElementById('setup-form');
   if (!form?.reportValidity()) return;
   const values = new FormData(form);
-  const settings = { deck: values.get('deck'), target: Number(values.get('target')), playlist: values.get('playlist') ?? '' };
-  if (settings.deck === 'playlist' && !settings.playlist.trim()) {
-    notify('Plak eerst de link naar je Spotify-playlist.', true);
-    document.getElementById('playlist')?.focus();
-    return;
-  }
+  const settings = { deck: 'mix', target: Number(values.get('target')) };
   move('start', { settings });
 }
 
@@ -508,7 +484,6 @@ document.addEventListener('click', event => {
     case 'manage': manage(); break;
     case 'recovery': recovery(); break;
     case 'copy-join': copy(urls().join, 'Deelnamelink gekopieerd.'); break;
-    case 'copy-dj': copy(urls().dj, 'Privé-DJ-link gekopieerd.'); break;
     case 'copy-recovery': copy(state.self.recovery, 'Teamcode gekopieerd.'); break;
     case 'toggle-recover':
       ui.recover = !ui.recover;
@@ -549,10 +524,6 @@ document.addEventListener('submit', event => {
       else notify('Vul de zeven tekens op het hostscherm in.', true);
       break;
     }
-    case 'dj-form':
-      event.preventDefault();
-      move('open', Object.fromEntries(new FormData(form)));
-      break;
     case 'setup-form':
       event.preventDefault();
       start();
@@ -562,23 +533,13 @@ document.addEventListener('submit', event => {
 
 document.addEventListener('input', event => {
   const input = event.target;
-  if (input.form?.id === 'dj-form') ui.dj[input.name] = input.value;
   if (input.form?.id === 'join-form') ui.entryValue = input.value;
-  if (input.id === 'playlist') {
-    ui.setup ??= { ...state.settings };
-    ui.setup.playlist = input.value;
-  }
+
 });
 
 document.addEventListener('change', event => {
   const input = event.target;
   if (input.dataset.field === 'bonus') ui.bonus = input.checked;
-  if (input.form?.id === 'setup-form' && input.name === 'deck') {
-    ui.setup ??= { ...state.settings };
-    ui.setup.deck = input.value;
-    render();
-    if (input.value === 'playlist') document.getElementById('playlist')?.focus();
-  }
   if (input.form?.id === 'setup-form' && input.name === 'target') {
     ui.setup ??= { ...state.settings };
     ui.setup.target = Number(input.value);

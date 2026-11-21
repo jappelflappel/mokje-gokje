@@ -8,8 +8,6 @@ Mokje Gokje is een Nederlandstalig muziektijdlijnspel voor twee tot acht teams. 
 
 Kies **Mokje Gokje-mix** voor 69 nummers. **Volgende nummer** opent de track rechtstreeks in de Spotify-app op de laptop en start de plaatsing in Mokje Gokje. Start de muziek in Spotify. Teams plaatsen op de eigen telefoon of via de tijdlijn op het hostscherm.
 
-Voor **Eigen playlist** plak je de Spotify-playlistlink. De DJ speelt een nummer uit de playlist en voert de titel, artiest en het uitgavejaar in via het DJ-scherm. Sorteer op het jaar waarin de gekozen opname voor het eerst verscheen.
-
 Het spel gebruikt gewone links naar Spotify. Inloggen en afspelen gebeuren in de Spotify-app of webspeler. [Spotify Developer Policy](https://developer.spotify.com/policy)
 
 ## Spelen

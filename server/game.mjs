@@ -31,9 +31,8 @@ export function newRoom() {
   return {
     code: makeCode(7),
     hostToken: makeToken(),
-    djToken: makeToken(),
     phase: 'lobby',
-    settings: { deck: 'mix', target: 7, playlist: '' },
+    settings: { deck: 'mix', target: 7 },
     teams: [],
     pendingTracks: [],
     turn: 0,
@@ -48,7 +47,6 @@ export function newRoom() {
 export function access(room, token) {
   if (!token) return { role: 'guest' };
   if (token === room.hostToken) return { role: 'host' };
-  if (token === room.djToken) return { role: 'dj' };
   const team = room.teams.find(candidate => candidate.token === token);
   requireThat(team, 'Deze toegangscode is verlopen of ongeldig.', 401);
   return { role: 'team', team };
@@ -61,21 +59,6 @@ export function cleanRoomCode(value) {
 function cleanText(value, limit) {
   if (typeof value !== 'string') return '';
   return value.replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/gu, ' ').replace(/\s+/gu, ' ').trim().slice(0, limit);
-}
-
-function spotifyUrl(value, kind) {
-  if (!value) return '';
-  try {
-    const url = new URL(value);
-    const path = url.pathname.replace(/^\/intl-[a-z]{2}(?:-[a-z]{2})?\//iu, '/');
-    const pattern = new RegExp('^/' + kind + '/[a-zA-Z0-9]{22}/?$');
-    if (url.origin === 'https://open.spotify.com' && !url.username && !url.password && pattern.test(path)) {
-      return 'https://open.spotify.com' + path.replace(/\/$/u, '');
-    }
-  } catch {
-    return '';
-  }
-  return '';
 }
 
 function spotifyAppUrl(value, kind) {
@@ -121,20 +104,17 @@ function join(room, data) {
 
 function settings(room, data) {
   requireThat(room.phase === 'lobby', 'De instellingen staan vast zodra het spel begint.');
-  requireThat(['mix', 'playlist'].includes(data.deck) && targets.includes(data.target),
-    'Kies een muziekmodus en een kaartdoel.', 400);
-  const playlist = spotifyUrl(data.playlist, 'playlist');
-  requireThat(!data.playlist || playlist, 'Plak de volledige Spotify-playlistlink van open.spotify.com.', 400);
-  room.settings = { deck: data.deck, target: data.target, playlist };
+  requireThat((data.deck ?? 'mix') === 'mix' && targets.includes(data.target),
+    'Kies een geldig kaartdoel voor de vaste mix.', 400);
+  room.settings = { deck: 'mix', target: data.target };
 }
 
 function start(room) {
   requireThat(room.phase === 'lobby', 'Dit spel is al begonnen.');
   requireThat(room.teams.length >= 2, 'Er zijn minstens twee teams nodig.');
-  requireThat(room.settings.deck !== 'playlist' || room.settings.playlist, 'Voeg eerst een Spotify-playlistlink toe.');
+  room.settings.deck = 'mix';
   room.pendingTracks = shuffledTracks();
   for (const team of room.teams) team.timeline.push(room.pendingTracks.pop());
-  if (room.settings.deck === 'playlist') room.pendingTracks = [];
   room.phase = 'ready';
 }
 
@@ -146,11 +126,12 @@ function endByScore(room) {
 
 function next(room, candidate) {
   requireThat(['ready', 'result'].includes(room.phase), 'Rond eerst het huidige nummer af.');
+  requireThat(room.settings.deck === 'mix', 'Start een nieuw spel met de vaste mix.');
   if (candidate !== undefined) {
-    requireThat(room.settings.deck === 'mix' && room.pendingTracks.at(-1)?.id === candidate,
+    requireThat(room.pendingTracks.at(-1)?.id === candidate,
       'Dit nummer is al geopend. Gebruik het huidige nummer in het hostscherm.');
   }
-  if (room.settings.deck === 'mix' && !room.pendingTracks.length) {
+  if (!room.pendingTracks.length) {
     endByScore(room);
     return;
   }
@@ -158,26 +139,15 @@ function next(room, candidate) {
   room.roundNumber += 1;
   room.round = {
     id: makeToken().slice(0, 16),
-    track: room.settings.deck === 'mix' ? room.pendingTracks.pop() : null,
+    track: room.pendingTracks.pop(),
     placement: null, steals: [], result: null
   };
   room.phase = candidate === undefined ? 'cue' : 'guess';
 }
 
-function openRound(room, data) {
+function openRound(room) {
   requireThat(room.phase === 'cue', 'De plaatsing is al geopend.');
-  if (room.settings.deck === 'playlist') {
-    const title = cleanText(data.title, 110);
-    const artist = cleanText(data.artist, 90);
-    const year = Number(data.year);
-    requireThat(title && artist && Number.isInteger(year) && year >= 1900 && year <= new Date().getUTCFullYear(),
-      'Vul de titel, artiest en het oorspronkelijke uitgavejaar in.', 400);
-    requireThat(!room.history.some(({ track }) => track.title.localeCompare(title, 'nl', { sensitivity: 'base' }) === 0
-      && track.artist.localeCompare(artist, 'nl', { sensitivity: 'base' }) === 0), 'Dit nummer is al gespeeld.');
-    const link = spotifyUrl(data.link, 'track');
-    requireThat(!data.link || link, 'Plak een volledige Spotify-tracklink van open.spotify.com.', 400);
-    room.round.track = { id: room.round.id, title, artist, year, link };
-  }
+  requireThat(room.round.track, 'Start een nieuw spel met de vaste mix.');
   room.phase = 'guess';
 }
 
@@ -289,8 +259,7 @@ export function apply(room, token, data) {
   const actor = access(room, token);
   const hostAllowed = actor.role === 'host' && hostActions.has(data.action);
   const teamAllowed = actor.role === 'team' && ['place', 'steal', 'pass'].includes(data.action);
-  const djAllowed = actor.role === 'dj' && data.action === 'open';
-  requireThat(hostAllowed || teamAllowed || djAllowed, 'Je mag deze actie niet uitvoeren.', 403);
+  requireThat(hostAllowed || teamAllowed, 'Je mag deze actie niet uitvoeren.', 403);
 
   const operation = typeof data.operation === 'string' && /^[a-f0-9]{32}$/u.test(data.operation)
     ? actor.role + ':' + (actor.team?.id ?? '') + ':' + data.operation : null;
@@ -306,7 +275,7 @@ export function apply(room, token, data) {
       start(room);
       break;
     case 'next': next(room, data.candidate); break;
-    case 'open': openRound(room, data); break;
+    case 'open': openRound(room); break;
     case 'skip': skip(room); break;
     case 'place': place(room, actor.team ?? room.teams[room.turn], data.gap); break;
     case 'steal': steal(room, actor.team, data.gap); break;
@@ -342,8 +311,7 @@ export function publicState(room, token) {
     role,
     code: room.code,
     phase: room.phase,
-    settings: { deck: room.settings.deck, target: room.settings.target,
-      ...(['host', 'dj'].includes(role) ? { playlist: spotifyAppUrl(room.settings.playlist, 'playlist') } : {}) },
+    settings: { deck: room.settings.deck, target: room.settings.target },
     teams: room.teams.map(({ id, name, coins, timeline }) => ({ id, name, coins, cards: timeline.length })),
     self: team ? { id: team.id, recovery: team.recovery, timeline: team.timeline } : null,
     activeId: active?.id ?? null,
@@ -355,11 +323,9 @@ export function publicState(room, token) {
       placement: round.placement,
       steals: round.steals,
       stealWindow: stealWindow(room),
-      result: round.result,
-      ...(role === 'dj' ? { track: round.track } : {})
+      result: round.result
     } : null,
     ...(role === 'host' ? {
-      djToken: room.djToken,
       spotifyNext: nextTrack ? {
         candidate: nextTrack.id,
         url: spotifyAppUrl(spotifyTrackLink(nextTrack), 'track')
