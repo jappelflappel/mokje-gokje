@@ -2,6 +2,8 @@
 
 Terugspoel is een Nederlandstalig muziektijdlijnspel voor twee tot acht teams. Open het hostscherm op de laptop en laat ieder team met één telefoon de deelname-QR scannen. De QR blijft in beeld op het hostscherm en werkt ook om opnieuw aan te sluiten. Op een andere telefoon gebruik je de teamcode van acht tekens. De host vindt die codes in **Spelbeheer**.
 
+[Speel Terugspoel op GitHub Pages](https://jappelflappel.github.io/terugspoel/)
+
 ## Spotify
 
 Kies **Terugspoel-mix** voor 69 nummers of **Eigen playlist** en plak een Spotify-playlistlink. Elke Spotify-playlist die de afspelende gebruiker kan openen is geschikt. Open bij een beurt het DJ-scherm op de Mac of stuur de privé-DJ-link naar degene die de muziek afspeelt. In de mix opent de DJ de zoekopdracht in Spotify en start het nummer daar. In playlistmodus speelt de DJ een nummer uit de playlist en voert de titel, artiest en het uitgavejaar in. Sorteer op het jaar waarin de gekozen opname voor het eerst verscheen.
