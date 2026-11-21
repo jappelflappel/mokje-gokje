@@ -430,9 +430,9 @@ function manage() {
 }
 
 function help() {
-  showDialog('Zo speel je Terugspoel', `<ol>
+  showDialog('Zo speel je Mokje Gokje', `<ol>
     <li><b>Sluit aan.</b> Scan de QR-code met één telefoon per team. Ieder team begint met één kaart en twee munten.</li>
-    <li><b>Luister.</b> De DJ speelt het nummer in Spotify. Gebruik de Terugspoel-mix of voeg in de lobby een eigen Spotify-playlist toe.</li>
+    <li><b>Luister.</b> De DJ speelt het nummer in Spotify. Gebruik de Mokje Gokje-mix of voeg in de lobby een eigen Spotify-playlist toe.</li>
     <li><b>Plaats.</b> Het team dat aan de beurt is, kiest waar het nummer chronologisch hoort. Een gelijk jaar mag aan beide kanten.</li>
     <li><b>Steel.</b> Andere teams kunnen één munt inzetten voor een vrij vak op dezelfde tijdlijn. Alleen als de eerste plaatsing fout is, kan een goede steelpoging de kaart winnen.</li>
     <li><b>Onthul.</b> De host bepaalt of het spelende team een bonusmunt krijgt. Het eerste team dat het ingestelde kaartdoel haalt, wint.</li>

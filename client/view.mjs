@@ -16,7 +16,7 @@ const actions = { lobby: 'Lobby', ready: 'Volgende beurt', cue: 'Nummer klaar', 
 function header(context, controls = '') {
   return `<header class="site-header">
     <div class="wrap header-inner">
-      <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span>Terugspoel</span></div>
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span>Mokje Gokje</span></div>
       <div class="header-tools">
         ${context ? `<span class="header-context">${h(context)}</span>` : ''}
         ${controls}
@@ -79,7 +79,7 @@ function vinyl(playing, result) {
     <div class="record-colors"><div class="plinth"></div>
       <div class="vinyl-disc${playing ? ' spinning' : ''}">
         <div class="vinyl-label">
-          <span>${result ? 'DE UITSLAG' : 'TERUGSPOEL'}</span>
+          <span>${result ? 'DE UITSLAG' : 'MOKJE GOKJE'}</span>
           <i></i>
           <small>${result ? result.track.year : '33 ⅓ RPM'}</small>
         </div>
@@ -140,7 +140,7 @@ function stageText(state, urls, ui) {
         ${nextControl(state)}`;
     case 'finished':
       return `${badge('Eindstand', 'green')}<h2>${h(winnerText(state))}</h2>
-        <p>${state.winnerIds.length === 1 ? 'Wint Terugspoel!' : 'Delen de eerste plaats!'}</p>
+        <p>${state.winnerIds.length === 1 ? 'Wint Mokje Gokje!' : 'Delen de eerste plaats!'}</p>
         <div class="stage-actions"><button type="button" class="button primary" data-tool="new">Nieuw spel</button></div>`;
   }
 }
@@ -154,7 +154,7 @@ function setup(state, draft) {
     <form id="setup-form" class="setup-grid">
       <fieldset><legend>Spotify</legend>
         <div class="segmented">
-          <label><input type="radio" name="deck" value="mix"${checked(deck === 'mix')}><span>Terugspoel-mix</span></label>
+          <label><input type="radio" name="deck" value="mix"${checked(deck === 'mix')}><span>Mokje Gokje-mix</span></label>
           <label><input type="radio" name="deck" value="playlist"${checked(deck === 'playlist')}><span>Eigen playlist</span></label>
         </div>
         ${deck === 'playlist'

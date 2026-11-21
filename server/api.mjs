@@ -101,7 +101,7 @@ export async function handleAPI(request, store) {
     throw new GameError(405, 'Deze aanvraag wordt niet ondersteund.');
   } catch (error) {
     if (error instanceof GameError) return json({ error: error.message }, error.status);
-    console.error('Terugspoel API:', error.message);
+    console.error('Mokje Gokje API:', error.message);
     return json({ error: 'Het spel is even onbereikbaar. Probeer het opnieuw.' }, 503);
   }
 }

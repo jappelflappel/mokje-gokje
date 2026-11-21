@@ -1,12 +1,12 @@
-# Terugspoel
+# Mokje Gokje
 
-Terugspoel is een Nederlandstalig muziektijdlijnspel voor twee tot acht teams. Open het hostscherm op de laptop en laat ieder team met één telefoon de deelname-QR scannen. De QR blijft in beeld op het hostscherm en werkt ook om opnieuw aan te sluiten. Op een andere telefoon gebruik je de teamcode van acht tekens. De host vindt die codes in **Spelbeheer**.
+Mokje Gokje is een Nederlandstalig muziektijdlijnspel voor twee tot acht teams. Open het hostscherm op de laptop en laat ieder team met één telefoon de deelname-QR scannen. De QR blijft in beeld op het hostscherm en werkt ook om opnieuw aan te sluiten. Op een andere telefoon gebruik je de teamcode van acht tekens. De host vindt die codes in **Spelbeheer**.
 
-[Speel Terugspoel op GitHub Pages](https://jappelflappel.github.io/terugspoel/)
+[Speel Mokje Gokje op GitHub Pages](https://jappelflappel.github.io/terugspoel/)
 
 ## Spotify
 
-Kies **Terugspoel-mix** voor 69 nummers. **Volgende nummer** opent de track in Spotify en start de plaatsing in Terugspoel. Op de Mac opent **⌘-klik** de link in een achtergrondtab. Start de muziek in Spotify. Teams plaatsen op de eigen telefoon of via de tijdlijn op het hostscherm.
+Kies **Mokje Gokje-mix** voor 69 nummers. **Volgende nummer** opent de track in Spotify en start de plaatsing in Mokje Gokje. Op de Mac opent **⌘-klik** de link in een achtergrondtab. Start de muziek in Spotify. Teams plaatsen op de eigen telefoon of via de tijdlijn op het hostscherm.
 
 Voor **Eigen playlist** plak je de Spotify-playlistlink. De DJ speelt een nummer uit de playlist en voert de titel, artiest en het uitgavejaar in via het DJ-scherm. Sorteer op het jaar waarin de gekozen opname voor het eerst verscheen.
 

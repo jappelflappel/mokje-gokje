@@ -170,7 +170,7 @@ a { color: var(--accent); }
   .mug-board { width: min(92%, 19rem); }
 }
 @media (max-width: 39rem) {
-  .header-inner:has(.mug-toggle) { flex-wrap: wrap; }
+  .header-inner { flex-wrap: wrap; }
 }
 
 .invite { padding: 1.12rem; display: grid; justify-items: center; text-align: center; gap: .75rem; }

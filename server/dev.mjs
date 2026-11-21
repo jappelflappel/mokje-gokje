@@ -45,4 +45,4 @@ const server = createServer(async (incoming, outgoing) => {
   }
 });
 
-server.listen(port, '0.0.0.0', () => console.log('Terugspoel draait op http://localhost:' + port));
+server.listen(port, '0.0.0.0', () => console.log('Mokje Gokje draait op http://localhost:' + port));
