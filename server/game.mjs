@@ -77,6 +77,13 @@ function spotifyUrl(value, kind) {
   return '';
 }
 
+function spotifyAppUrl(value, kind) {
+  const match = typeof value === 'string'
+    ? value.match(new RegExp('^https://open\\.spotify\\.com/' + kind + '/([a-zA-Z0-9]{22})(?:[/?#].*)?$', 'u'))
+    : null;
+  return match ? 'spotify:' + kind + ':' + match[1] : '';
+}
+
 const ordered = (a, b) => a.year - b.year;
 
 function shuffledTracks() {
@@ -289,13 +296,13 @@ export function publicState(room, token) {
   const nextTrack = role === 'host' && room.settings.deck === 'mix' && ['ready', 'result'].includes(room.phase)
     ? room.pendingTracks.at(-1) : null;
   const currentLink = role === 'host' && room.settings.deck === 'mix' && round?.track
-    && ['cue', 'guess'].includes(room.phase) ? spotifyTrackLink(round.track) : '';
+    && ['cue', 'guess'].includes(room.phase) ? spotifyAppUrl(spotifyTrackLink(round.track), 'track') : '';
   return {
     role,
     code: room.code,
     phase: room.phase,
     settings: { deck: room.settings.deck, target: room.settings.target,
-      ...(['host', 'dj'].includes(role) ? { playlist: room.settings.playlist } : {}) },
+      ...(['host', 'dj'].includes(role) ? { playlist: spotifyAppUrl(room.settings.playlist, 'playlist') } : {}) },
     teams: room.teams.map(({ id, name, coins, timeline }) => ({ id, name, coins, cards: timeline.length })),
     self: team ? { id: team.id, recovery: team.recovery, timeline: team.timeline } : null,
     activeId: active?.id ?? null,
@@ -311,7 +318,10 @@ export function publicState(room, token) {
     } : null,
     ...(role === 'host' ? {
       djToken: room.djToken,
-      spotifyNext: nextTrack ? { candidate: nextTrack.id, url: spotifyTrackLink(nextTrack) } : null,
+      spotifyNext: nextTrack ? {
+        candidate: nextTrack.id,
+        url: spotifyAppUrl(spotifyTrackLink(nextTrack), 'track')
+      } : null,
       spotifyCurrent: currentLink,
       recoveries: room.teams.map(({ id, recovery }) => ({ id, recovery })),
       remaining: room.settings.deck === 'mix' ? room.pendingTracks.length : null

@@ -98,7 +98,7 @@ function nextControl(state) {
   const next = state.spotifyNext;
   if (next?.url) {
     return `<div class="stage-actions">${spotifyLink(next.url, 'Volgende nummer', 'primary', next.candidate)}</div>
-      <p class="spotify-hint" id="spotify-background">⌘-klik opent Spotify op de achtergrond.</p>`;
+      <p class="spotify-hint" id="spotify-background">Opent de Spotify-app op deze laptop.</p>`;
   }
   return `<div class="stage-actions">${button(state.remaining === 0 ? 'Bekijk eindstand' : 'Volgende nummer', 'next')}</div>`;
 }
@@ -113,19 +113,19 @@ function stageText(state, urls, ui) {
         <div class="stage-actions">${button('Start spel', 'start', 'primary', state.teams.length < 2)}</div>`;
     case 'ready':
       return `${badge('Aan de beurt', 'blue')}<h2>${h(team.name)}</h2>
-        <p>${state.spotifyNext?.url ? 'Open het volgende nummer in Spotify.' : 'Trek een nummer voor dit team.'}</p>
+        <p>${state.spotifyNext?.url ? 'Open het volgende nummer in de Spotify-app.' : 'Trek een nummer voor dit team.'}</p>
         ${nextControl(state)}`;
     case 'cue':
       return `${badge('Nummer klaar', 'blue')}<h2>Zet Spotify aan</h2>
-        <p>${h(team.name)} is aan de beurt. ${state.spotifyCurrent ? 'Start het nummer in Spotify.' : 'Gebruik het DJ-scherm om de playlist te bedienen.'}</p>
-        <div class="stage-actions">${state.spotifyCurrent ? spotifyLink(state.spotifyCurrent, 'Open Spotify', 'primary')
+        <p>${h(team.name)} is aan de beurt. ${state.spotifyCurrent ? 'Start het nummer in de Spotify-app.' : 'Gebruik het DJ-scherm om de playlist te bedienen.'}</p>
+        <div class="stage-actions">${state.spotifyCurrent ? spotifyLink(state.spotifyCurrent, 'Open Spotify-app', 'primary')
           : `<a class="button primary" href="${h(urls.dj)}" target="_blank" rel="noopener noreferrer">Open DJ-scherm</a>`}
         ${state.spotifyCurrent ? button('Plaatsen openen', 'open', 'soft') : ''}
         ${button('Sla nummer over', 'skip', 'text-button')}</div>`;
     case 'guess':
       return `${badge('Plaatsen', 'blue')}<h2>${h(team.name)}</h2>
         <p>Kies op de tijdlijn hieronder of op de teamtelefoon waar het nummer hoort.</p>
-        <div class="stage-actions">${state.spotifyCurrent ? spotifyLink(state.spotifyCurrent, 'Open Spotify') : ''}
+        <div class="stage-actions">${state.spotifyCurrent ? spotifyLink(state.spotifyCurrent, 'Open Spotify-app') : ''}
         ${button('Sla nummer over', 'skip', 'soft')}</div>`;
     case 'steal':
       return `${badge('Steelkans', 'amber')}<h2>Wie durft<br>te stelen?</h2>
@@ -384,7 +384,7 @@ export function djView(state, ui) {
       <section class="panel dj-panel">
         ${badge(actions[state.phase], 'blue')}
         <h2>${active ? h(active.name) : 'Wacht op de host'}</h2>
-        ${playlist && state.settings.playlist ? `<p><a class="button soft" href="${h(state.settings.playlist)}" target="_blank" rel="noopener noreferrer">Open Spotify-playlist</a></p>` : ''}
+        ${playlist && state.settings.playlist ? `<p><a class="button soft" href="${h(state.settings.playlist)}">Open Spotify-app</a></p>` : ''}
         ${track ? `<div class="dj-track">${card(track)}
           <a class="button primary" href="${h(track.link || spotifySearch(track))}" target="_blank" rel="noopener noreferrer">${track.link ? 'Open in Spotify' : 'Zoek in Spotify'}</a>
         </div>` : ''}
