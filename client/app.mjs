@@ -10,7 +10,8 @@ const api = location.hostname === 'jappelflappel.github.io' ? GAME_SERVER : '';
 const codePattern = /^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{7}$/u;
 const tokenPattern = /^[a-f0-9]{40}$/u;
 const blankDj = () => ({ title: '', artist: '', year: '', link: '' });
-const ui = { recover: false, entryError: '', entryValue: '', setup: null, dj: blankDj(), gap: null, bonus: false };
+const blankMug = () => ({ open: false, teams: null, rolling: false, winner: null, angle: 0, from: 0, startedAt: 0 });
+const ui = { recover: false, entryError: '', entryValue: '', setup: null, dj: blankDj(), gap: null, bonus: false, mug: blankMug() };
 
 let state = null;
 let revision = 0;
@@ -22,6 +23,7 @@ let busy = false;
 let refreshing = false;
 let poll = 0;
 let noticeTimer = 0;
+let mugTimer = 0;
 let offline = false;
 let roomUnavailable = false;
 
@@ -134,6 +136,47 @@ function render() {
   restoreFocus(focus);
 }
 
+function closeMug() {
+  clearTimeout(mugTimer);
+  ui.mug = blankMug();
+}
+
+function toggleMug() {
+  if (ui.mug.open) {
+    closeMug();
+    render();
+    root.querySelector('.mug-toggle')?.focus({ preventScroll: true });
+    return;
+  }
+  ui.mug.open = true;
+  render();
+  root.querySelector('[data-tool="mug-spin"]:enabled, [data-tool="mug-close"]')?.focus({ preventScroll: true });
+}
+
+function spinMug() {
+  const mug = ui.mug;
+  if (state?.role !== 'host' || !mug.open || mug.rolling || !state.teams.length) return;
+
+  const teams = state.teams.slice();
+  const index = Math.floor(Math.random() * teams.length);
+  const target = index * 360 / teams.length;
+  mug.from = mug.angle;
+  mug.angle = mug.from + 5 * 360 + (target - mug.from + 360) % 360;
+  mug.teams = teams;
+  mug.rolling = true;
+  mug.winner = null;
+  mug.startedAt = performance.now();
+  render();
+
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  mugTimer = setTimeout(() => {
+    mug.angle = target;
+    mug.winner = teams[index];
+    mug.rolling = false;
+    render();
+  }, reducedMotion ? 20 : 3060);
+}
+
 function useResult(result) {
   if (result.revision < revision) return;
   const changed = result.revision !== revision || result.state.role !== state?.role;
@@ -233,6 +276,7 @@ async function createRoom() {
     revision = 0;
     ui.setup = null;
     ui.bonus = false;
+    closeMug();
     remember('host', code, token);
     remember('last-host', '', code);
     history.replaceState(null, '', roomURL('host', code));
@@ -436,6 +480,9 @@ document.addEventListener('click', event => {
     return;
   }
   switch (clicked.dataset.tool) {
+    case 'mug-toggle':
+    case 'mug-close': toggleMug(); break;
+    case 'mug-spin': spinMug(); break;
     case 'help': help(); break;
     case 'manage': manage(); break;
     case 'recovery': recovery(); break;

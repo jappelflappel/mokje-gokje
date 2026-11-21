@@ -196,21 +196,54 @@ function history(state) {
   </section>`;
 }
 
+function mugStage(state, mug) {
+  const teams = mug.teams ?? state.teams;
+  const names = teams.map((team, index) => {
+    const radians = index * 2 * Math.PI / teams.length;
+    const x = 50 + 38 * Math.sin(radians);
+    const y = 50 - 38 * Math.cos(radians);
+    const winner = mug.winner?.id === team.id && !mug.rolling;
+    return `<li class="mug-team${winner ? ' mug-selected' : ''}" style="--x:${x}%;--y:${y}%">
+      ${teamDot(index)}<span title="${h(team.name)}">${h(team.name)}</span>
+    </li>`;
+  }).join('');
+  return `<section class="stage mug-stage" aria-labelledby="mug-heading">
+    <div class="stage-copy">
+      <h2 id="mug-heading">Mokje Mokje</h2>
+      <div class="mug-outcome" role="status">${mug.winner
+        ? `<span>De mok wijst naar</span><strong>${h(mug.winner.name)}</strong>`
+        : `<p>${mug.rolling ? 'De mok draait…' : (state.teams.length ? 'Laat de mok een team kiezen.' : 'Laat eerst een team meedoen.')}</p>`}</div>
+      <div class="stage-actions">
+        <button class="button primary" type="button" data-tool="mug-spin"${disabled(!state.teams.length || mug.rolling)}>Draai de mok</button>
+        <button class="button soft" type="button" data-tool="mug-close">Terug naar het spel</button>
+      </div>
+    </div>
+    <div class="mug-board">
+      <ul class="mug-teams" aria-label="Teams rond de mok">${names}</ul>
+      <div class="mug-rotor${mug.rolling ? ' mug-rolling' : ''}"
+        style="--from:${mug.from}deg;--stop:${mug.angle}deg;--elapsed:${mug.rolling ? mug.startedAt - performance.now() : 0}ms" aria-hidden="true">
+        <div class="mug-cup"><span></span></div>
+      </div>
+    </div>
+  </section>`;
+}
+
 export function hostView(state, urls, ui) {
   const active = activeTeam(state);
   const phaseText = state.phase === 'lobby' ? 'Maak de kamer klaar en nodig de teams uit.'
     : state.phase === 'finished' ? 'De eindstand van deze sessie.' : 'Volg de beurt, tijdlijn en stand van alle teams.';
-  return `${header('Host', '<button class="button soft" data-tool="manage" type="button">Spelbeheer</button>')}
+  return `${header('Host', `<button class="button soft mug-toggle" data-tool="mug-toggle" type="button" aria-pressed="${ui.mug.open}">Mokje Mokje</button>
+    <button class="button soft" data-tool="manage" type="button">Spelbeheer</button>`)}
     <main id="main" class="wrap host">
       <div class="screen-heading"><div><h1>Hostscherm</h1><p>${phaseText}</p></div>
         ${state.roundNumber ? `<span class="round-indicator">${record} Ronde ${state.roundNumber}</span>` : ''}
       </div>
       <div class="host-grid">
         <div class="host-left">
-          <section class="stage phase-${state.phase}" aria-label="Huidige beurt">
+          ${ui.mug.open ? mugStage(state, ui.mug) : `<section class="stage phase-${state.phase}" aria-label="Huidige beurt">
             <div class="stage-copy">${stageText(state, urls, ui)}</div>
             ${vinyl(['guess', 'steal'].includes(state.phase), state.round?.result)}
-          </section>
+          </section>`}
           ${state.phase === 'lobby' ? setup(state, ui.setup) : ''}
           ${active && state.phase !== 'finished' ? `<section class="panel board" aria-labelledby="board-heading">
             <div class="panel-title"><h2 id="board-heading">Tijdlijn van ${h(active.name)}</h2><span>${active.cards} / ${state.settings.target}</span></div>
