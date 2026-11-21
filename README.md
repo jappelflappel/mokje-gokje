@@ -17,7 +17,7 @@ Het spel gebruikt gewone links naar Spotify. Inloggen en afspelen gebeuren in de
 1. Elk team begint met één kaart en twee munten. De host trekt een nummer en opent de plaatsing zodra de muziek speelt.
 2. Het actieve team kiest een vak in de eigen tijdlijn. Hetzelfde jaar is aan beide kanten geldig.
 3. Andere teams kunnen één munt inzetten op een ander vak in die tijdlijn. Elk vak kan één keer worden geclaimd. Een juiste plaatsing gaat voor. Bij een foute plaatsing wint het eerste team met een juiste steelpoging de kaart.
-4. De host onthult het jaar en beslist of het actieve team een bonusmunt krijgt. Het eerste team dat het kaartdoel haalt, wint.
+4. De steelkans duurt maximaal twaalf seconden. Teams kunnen kosteloos passen. De uitslag verschijnt zodra alle mogelijke steelkansen zijn afgehandeld of de tijd om is. De host kan dan één bonusmunt geven. Het eerste team dat het kaartdoel haalt, wint.
 
 ## Lokaal draaien
 

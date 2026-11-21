@@ -90,8 +90,20 @@ function vinyl(playing, result) {
 }
 
 function spotifyLink(url, label, style = 'soft', candidate = '') {
-  return `<a class="button ${style}" href="${h(url)}" target="_blank" rel="noopener noreferrer"${candidate
+  return `<a class="button ${style}" href="${h(url)}"${url.startsWith('spotify:') ? '' : ' target="_blank" rel="noopener noreferrer"'}${candidate
     ? ` data-next-track="${h(candidate)}" aria-describedby="spotify-background"` : ''}>${h(label)}</a>`;
+}
+
+function stealClock(ui) {
+  return `<span class="steal-clock" data-steal-clock>${ui.stealSeconds} s</span>`;
+}
+
+function bonusControl(state) {
+  const result = state.round?.result;
+  if (!result) return '';
+  return result.bonus
+    ? '<p>Bonusmunt uitgedeeld.</p>'
+    : button('Geef bonusmunt aan ' + nameOf(state, result.activeId), 'bonus', 'soft');
 }
 
 function nextControl(state) {
@@ -117,30 +129,36 @@ function stageText(state, urls, ui) {
         ${nextControl(state)}`;
     case 'cue':
       return `${badge('Nummer klaar', 'blue')}<h2>Zet Spotify aan</h2>
-        <p>${h(team.name)} is aan de beurt. ${state.spotifyCurrent ? 'Start het nummer in de Spotify-app.' : 'Gebruik het DJ-scherm om de playlist te bedienen.'}</p>
-        <div class="stage-actions">${state.spotifyCurrent ? spotifyLink(state.spotifyCurrent, 'Open Spotify-app', 'primary')
+        <p>${h(team.name)} is aan de beurt. ${state.spotifyCurrent ? 'Start het nummer en bevestig zodra de muziek speelt.' : 'Laat de kaart invoeren op het DJ-scherm.'}</p>
+        <div class="stage-actions">${state.spotifyCurrent ? `${button('Muziek speelt', 'open')}
+          ${spotifyLink(state.spotifyCurrent, 'Open Spotify opnieuw')}
+          ${spotifyLink(state.spotifyCurrent.replace('spotify:track:', 'https://open.spotify.com/track/'), 'Open webspeler', 'text-button')}`
           : `<a class="button primary" href="${h(urls.dj)}" target="_blank" rel="noopener noreferrer">Open DJ-scherm</a>`}
-        ${state.spotifyCurrent ? button('Plaatsen openen', 'open', 'soft') : ''}
         ${button('Sla nummer over', 'skip', 'text-button')}</div>`;
     case 'guess':
       return `${badge('Plaatsen', 'blue')}<h2>${h(team.name)}</h2>
         <p>Kies op de tijdlijn hieronder of op de teamtelefoon waar het nummer hoort.</p>
         <div class="stage-actions">${state.spotifyCurrent ? spotifyLink(state.spotifyCurrent, 'Open Spotify-app') : ''}
+        ${state.spotifyCurrent ? spotifyLink(state.spotifyCurrent.replace('spotify:track:', 'https://open.spotify.com/track/'), 'Open webspeler', 'text-button') : ''}
         ${button('Sla nummer over', 'skip', 'soft')}</div>`;
-    case 'steal':
+    case 'steal': {
+      const waiting = ui.stealSeconds > 0 ? (state.round.stealWindow?.waiting ?? []).length : 0;
       return `${badge('Steelkans', 'amber')}<h2>Wie durft<br>te stelen?</h2>
-        <p>${h(team.name)} heeft geplaatst. Andere teams kunnen voor één munt een ander vak claimen.</p>
-        <label class="bonus-toggle"><input type="checkbox" data-field="bonus"${checked(ui.bonus)}>${coin}<span>Geef ${h(team.name)} een bonusmunt</span></label>
-        <div class="stage-actions">${button('Onthul het jaar', 'reveal')}</div>`;
+        <p>${waiting ? `Nog ${waiting} ${waiting === 1 ? 'team kan' : 'teams kunnen'} stelen of passen. ${stealClock(ui)}` : 'De steelkans is gesloten.'}</p>
+        ${state.round.stealWindow?.until ? '' : `<div class="stage-actions">${button('Onthul het jaar', 'reveal')}</div>`}`;
+    }
     case 'result':
       return `${badge(result.receiverId ? (result.placedCorrectly ? 'Goed geplaatst' : 'Kaart gestolen') : 'Mis', result.receiverId ? 'green' : 'amber')}
         <h2 class="reveal-year">${result.track.year}</h2>
         <p class="revealed-track"><b>${h(result.track.title)}</b><br>${h(result.track.artist)}</p>
-        <p>${h(verdict(state, result))}${result.bonus ? ' Bonusmunt uitgedeeld.' : ''}</p>
+        <p>${h(verdict(state, result))}</p>
+        ${bonusControl(state)}
         ${nextControl(state)}`;
     case 'finished':
       return `${badge('Eindstand', 'green')}<h2>${h(winnerText(state))}</h2>
         <p>${state.winnerIds.length === 1 ? 'Wint Mokje Gokje!' : 'Delen de eerste plaats!'}</p>
+        ${result ? `<p class="revealed-track"><b>${h(result.track.year)} · ${h(result.track.title)}</b><br>${h(result.track.artist)}</p>` : ''}
+        ${bonusControl(state)}
         <div class="stage-actions"><button type="button" class="button primary" data-tool="new">Nieuw spel</button></div>`;
   }
 }
@@ -159,7 +177,8 @@ function setup(state, draft) {
         </div>
         ${deck === 'playlist'
           ? `<label class="field playlist-field" for="playlist">Spotify-playlistlink<input id="playlist" name="playlist" type="url" placeholder="https://open.spotify.com/playlist/…" value="${h(playlist)}" maxlength="200"></label>`
-          : '<p class="field-note">Bekende hits van de jaren 60 tot nu.</p>'}
+          : '<p class="field-note">69 hits uit 1961–2025. De host opent elk nummer in Spotify.</p>'}
+        ${deck === 'playlist' ? '<p class="field-note">De DJ ziet het antwoord en voert de trackgegevens per ronde in.</p>' : ''}
       </fieldset>
       <fieldset><legend>Kaarten om te winnen</legend>
         <div class="segmented numbers">
@@ -173,6 +192,7 @@ function setup(state, draft) {
 function gapLabel(cards, index) {
   if (index === 0) return 'Vóór ' + cards[0].year;
   if (index === cards.length) return 'Na ' + cards.at(-1).year;
+  if (cards[index - 1].year === cards[index].year) return 'Bij ' + cards[index].year;
   return 'Tussen ' + cards[index - 1].year + ' en ' + cards[index].year;
 }
 
@@ -333,9 +353,9 @@ export function teamView(state, ui) {
   const active = activeTeam(state);
   const ownTurn = self.id === state.activeId;
   const ownSteal = state.round?.steals.some(claim => claim.teamId === self.id);
+  const passed = state.round?.stealWindow?.passes.includes(self.id);
   const canPlace = state.phase === 'guess' && ownTurn;
-  const canSteal = state.phase === 'steal' && !ownTurn && !ownSteal && self.coins > 0
-    && takenGaps(state).size < state.activeTimeline.length + 1;
+  const canSteal = state.phase === 'steal' && ui.stealSeconds > 0 && state.round.stealWindow?.waiting.includes(self.id);
   const [title, subtitle] = teamPrompt(state, ownTurn, ownSteal, canPlace, canSteal);
   const result = state.round?.result;
   const showClaim = state.phase === 'steal' && ownTurn;
@@ -349,8 +369,9 @@ export function teamView(state, ui) {
         ${badge(actions[state.phase], state.phase === 'steal' ? 'amber' : (state.phase === 'finished' ? 'green' : 'blue'))}
         <h2>${h(title)}</h2><p>${h(subtitle)}</p>
         ${result ? card(result.track, 'result-card') : ''}
+        ${canSteal ? `<div class="steal-options">${stealClock(ui)}${button('Pas', 'pass', 'soft')}</div>` : ''}
         ${state.phase === 'steal' && !ownTurn && !ownSteal && !canSteal
-          ? `<p class="field-note">${self.coins ? 'Alle mogelijke vakken zijn geclaimd.' : 'Jullie hebben geen munten meer.'}</p>` : ''}
+          ? `<p class="field-note">${passed ? 'Jullie hebben gepast.' : (!self.coins ? 'Jullie hebben geen munten meer.' : 'De steelkans is gesloten.')}</p>` : ''}
       </section>
       ${canSteal ? `<section class="panel team-line" aria-labelledby="steal-heading">
         <div class="panel-title"><h2 id="steal-heading">Tijdlijn van ${h(active.name)}</h2></div>

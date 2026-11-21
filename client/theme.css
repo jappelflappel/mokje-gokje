@@ -343,9 +343,15 @@ dialog::backdrop { background: #151c2b62; }
 }
 
 @media (min-width: 39.01rem) {
+  .phase-guess, .phase-steal { min-height: 0; }
+  .phase-guess .record-colors, .phase-steal .record-colors { width: min(94%, 12rem); }
+  .phase-guess .stage-copy, .phase-steal .stage-copy { padding-block: 1.25rem; gap: .5rem; }
+  .phase-guess h2, .phase-steal h2 { font-size: clamp(2rem, 4vw, 3.4rem); }
   .host-aside .scoreboard {
     max-height: max(8rem, calc(100svh - var(--header) - 24.7rem));
     overflow-y: auto;
     scrollbar-width: thin;
   }
 }
+.steal-clock { font-weight: 750; font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
+.steal-options { display: flex; align-items: center; gap: .8rem; }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { apply, CODE, newRoom, publicState } from '../server/game.mjs';
+import { advanceRoom, apply, CODE, newRoom, publicState } from '../server/game.mjs';
 
 function fixture(count = 3, settings) {
   const room = newRoom();
@@ -31,8 +31,8 @@ test('invite codes and team recovery survive a round without disclosing credenti
   assert.equal(publicState(room, '').teams, undefined);
 });
 
-test('the one-click mix starts placement immediately and keeps the track hidden until reveal', () => {
-  const { room, host, teams } = fixture(2);
+test('the mix keeps the track hidden while teams place and pass', () => {
+  const { room, host, team, teams } = fixture(2);
   delete room.pendingTracks.at(-1).link; // A room created before tracks had Spotify links.
   const nextTrack = publicState(room, room.hostToken).spotifyNext;
   assert.match(nextTrack.url, /^spotify:track:[A-Za-z0-9]{22}$/u);
@@ -40,6 +40,7 @@ test('the one-click mix starts placement immediately and keeps the track hidden 
   assert.throws(() => host('next', { candidate: 'mix-stale' }), /al geopend/);
 
   host('next', { candidate: nextTrack.candidate });
+  assert.equal(publicState(room, room.hostToken).spotifyCurrent, nextTrack.url);
   assert.equal(room.phase, 'guess');
   const secret = room.round.track;
   assert.equal(publicState(room, room.hostToken).round.track, undefined);
@@ -48,8 +49,17 @@ test('the one-click mix starts placement immediately and keeps the track hidden 
   host('place', { gap });
   assert.equal(room.phase, 'steal');
   assert.equal(publicState(room, teams[0]).round.result, null);
-  host('reveal');
+  assert.throws(() => host('reveal'), /nog steeltijd/);
+  team(1, 'pass');
+  assert.equal(room.teams[1].coins, 2);
+  assert.throws(() => team(1, 'steal', { gap: 1 - gap }), /overgeslagen/);
+  assert.equal(advanceRoom(room), true);
+  assert.equal(advanceRoom(room), false);
   assert.equal(publicState(room, teams[0]).round.result.track.title, secret.title);
+  host('bonus');
+  assert.throws(() => host('bonus'), /al uitgedeeld/);
+  assert.equal(room.teams[0].coins, 3);
+  assert.equal(room.history[0].bonus, true);
 });
 
 test('a different team can steal a misplaced card and the host can award one bonus', () => {
@@ -103,7 +113,9 @@ test('the playlist uses an external Spotify URL and keeps DJ-entered data privat
   assert.equal(guestTrack.hasTrack, true);
   assert.equal(guestTrack.track, undefined);
   team(0, 'place', { gap: 1 });
-  host('reveal');
+  room.round.stealUntil = Date.now() - 1;
+  assert.throws(() => team(1, 'steal', { gap: 0 }), /steeltijd is voorbij/);
+  assert.equal(advanceRoom(room), true);
   assert.equal(publicState(room, teams[0]).round.result.track.title, 'Playlistnummer');
 });
 

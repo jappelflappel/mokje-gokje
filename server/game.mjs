@@ -5,6 +5,7 @@ export const ROOM_TTL = 3 * 24 * 60 * 60 * 1000;
 export const CODE = /^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{7}$/;
 const alphabet = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 const targets = [5, 7, 10];
+const STEAL_MS = 12_000;
 
 export class GameError extends Error {
   constructor(status, message) {
@@ -191,15 +192,37 @@ function place(room, team, gap) {
   requireThat(room.teams[room.turn].id === team.id, 'Een ander team is aan de beurt.', 403);
   requireThat(Number.isInteger(gap) && gap >= 0 && gap <= team.timeline.length, 'Kies een vak op je tijdlijn.', 400);
   room.round.placement = gap;
+  room.round.stealUntil = Date.now() + STEAL_MS;
+  room.round.passes = [];
   room.phase = 'steal';
+}
+
+function stealWindow(room) {
+  if (room.phase !== 'steal') return null;
+  const { stealUntil = 0, passes = [], steals } = room.round;
+  const now = Date.now();
+  const active = room.teams[room.turn];
+  const free = active.timeline.length - steals.length;
+  const waiting = free > 0 && now < stealUntil
+    ? room.teams.filter(team => team.id !== active.id && team.coins > 0
+      && !passes.includes(team.id) && !steals.some(claim => claim.teamId === team.id)).map(team => team.id)
+    : [];
+  return { until: stealUntil, now, waiting, passes };
+}
+
+function pass(room, team) {
+  requireThat(stealWindow(room)?.waiting.includes(team.id), 'Je kunt deze steelkans niet meer overslaan.');
+  room.round.passes.push(team.id);
 }
 
 function steal(room, team, gap) {
   requireThat(room.phase === 'steal', 'Er is nu geen steelkans.');
+  requireThat(room.round.stealUntil === undefined || Date.now() < room.round.stealUntil, 'De steeltijd is voorbij.');
   const active = room.teams[room.turn];
   requireThat(active.id !== team.id, 'Deze steelkans is voor de andere teams.', 403);
   requireThat(team.coins > 0, 'Je hebt geen munten meer.');
   requireThat(!room.round.steals.some(claim => claim.teamId === team.id), 'Je hebt al een steelpoging gedaan.');
+  requireThat(!room.round.passes?.includes(team.id), 'Jullie hebben deze steelkans overgeslagen.');
   requireThat(Number.isInteger(gap) && gap >= 0 && gap <= active.timeline.length, 'Kies een vak op de tijdlijn.', 400);
   requireThat(room.round.placement !== gap && !room.round.steals.some(claim => claim.gap === gap),
     'Dat vak is al geclaimd. Kies een ander vak.');
@@ -214,6 +237,7 @@ function fits(cards, position, year) {
 
 function reveal(room, bonus) {
   requireThat(room.phase === 'steal', 'Wacht op de plaatsing van het team.');
+  requireThat(!stealWindow(room).waiting.length, 'De andere teams hebben nog steeltijd.');
   const active = room.teams[room.turn];
   const { track, placement, steals } = room.round;
   const placedCorrectly = fits(active.timeline, placement, track.year);
@@ -242,14 +266,29 @@ function reveal(room, bonus) {
   }
 }
 
-const roundActions = new Set(['open', 'skip', 'place', 'steal', 'reveal']);
-const hostActions = new Set(['settings', 'start', 'next', 'open', 'skip', 'place', 'reveal', 'finish', 'remove']);
+export function advanceRoom(room) {
+  if (room.phase !== 'steal' || room.round.stealUntil === undefined || stealWindow(room).waiting.length) return false;
+  reveal(room, false);
+  return true;
+}
+
+function grantBonus(room) {
+  const result = room.round.result;
+  requireThat(result && ['result', 'finished'].includes(room.phase), 'Wacht op de uitslag.');
+  requireThat(!result.bonus, 'De bonusmunt is al uitgedeeld.');
+  room.teams.find(team => team.id === result.activeId).coins += 1;
+  result.bonus = true;
+  room.history[0].bonus = true;
+}
+
+const roundActions = new Set(['open', 'skip', 'place', 'steal', 'pass', 'reveal', 'bonus']);
+const hostActions = new Set(['settings', 'start', 'next', 'open', 'skip', 'place', 'reveal', 'bonus', 'finish', 'remove']);
 
 export function apply(room, token, data) {
   if (data.action === 'join') return join(room, data);
   const actor = access(room, token);
   const hostAllowed = actor.role === 'host' && hostActions.has(data.action);
-  const teamAllowed = actor.role === 'team' && ['place', 'steal'].includes(data.action);
+  const teamAllowed = actor.role === 'team' && ['place', 'steal', 'pass'].includes(data.action);
   const djAllowed = actor.role === 'dj' && data.action === 'open';
   requireThat(hostAllowed || teamAllowed || djAllowed, 'Je mag deze actie niet uitvoeren.', 403);
 
@@ -271,7 +310,9 @@ export function apply(room, token, data) {
     case 'skip': skip(room); break;
     case 'place': place(room, actor.team ?? room.teams[room.turn], data.gap); break;
     case 'steal': steal(room, actor.team, data.gap); break;
+    case 'pass': pass(room, actor.team); break;
     case 'reveal': reveal(room, data.bonus); break;
+    case 'bonus': grantBonus(room); break;
     case 'finish':
       requireThat(['ready', 'result'].includes(room.phase), 'Rond eerst het huidige nummer af.');
       endByScore(room);
@@ -313,6 +354,7 @@ export function publicState(room, token) {
       hasTrack: Boolean(round.track),
       placement: round.placement,
       steals: round.steals,
+      stealWindow: stealWindow(room),
       result: round.result,
       ...(role === 'dj' ? { track: round.track } : {})
     } : null,

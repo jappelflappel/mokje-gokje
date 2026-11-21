@@ -1,4 +1,4 @@
-import { apply, CODE, GameError, newRoom, publicState, ROOM_TTL } from './game.mjs';
+import { access, advanceRoom, apply, CODE, GameError, newRoom, publicState, ROOM_TTL } from './game.mjs';
 
 const headers = {
   'content-type': 'application/json; charset=utf-8',
@@ -62,12 +62,24 @@ async function change(store, code, token, data) {
   for (let attempt = 0; attempt < 6; attempt += 1) {
     const { room, revision } = await loadRoom(store, code);
     const result = apply(room, token, data);
+    if (result.changed) advanceRoom(room);
     if (result.changed && !await store.update(room, revision)) continue;
     return json({
       revision: result.changed ? revision + 1 : revision,
       state: publicState(room, result.token ?? token),
       ...(result.token ? { token: result.token } : {})
     });
+  }
+  throw new GameError(409, 'Er kwamen tegelijk veel keuzes binnen. Probeer het opnieuw.');
+}
+
+async function readRoom(store, code, token) {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const { room, revision } = await loadRoom(store, code);
+    if (!token) return json({ revision, state: publicState(room, token) });
+    access(room, token);
+    if (!advanceRoom(room)) return json({ revision, state: publicState(room, token) });
+    if (await store.update(room, revision)) return json({ revision: revision + 1, state: publicState(room, token) });
   }
   throw new GameError(409, 'Er kwamen tegelijk veel keuzes binnen. Probeer het opnieuw.');
 }
@@ -90,8 +102,7 @@ export async function handleAPI(request, store) {
     }
 
     if (request.method === 'GET') {
-      const { room, revision } = await loadRoom(store, code);
-      return json({ revision, state: publicState(room, token) });
+      return await readRoom(store, code, token);
     }
     if (request.method === 'POST') {
       const data = await readData(request);

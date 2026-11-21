@@ -24,6 +24,8 @@ let refreshing = false;
 let poll = 0;
 let noticeTimer = 0;
 let mugTimer = 0;
+let stealDeadline = 0;
+let stealTimer = 0;
 let offline = false;
 let roomUnavailable = false;
 
@@ -116,6 +118,16 @@ function restoreFocus(focus) {
 }
 
 function render() {
+  clearTimeout(stealTimer);
+  const updateClock = () => {
+    const seconds = Math.max(0, Math.ceil((stealDeadline - performance.now()) / 1000));
+    const expired = ui.stealSeconds > 0 && seconds === 0;
+    ui.stealSeconds = seconds;
+    if (expired) return render();
+    for (const clock of root.querySelectorAll('[data-steal-clock]')) clock.textContent = seconds + ' s';
+    if (seconds > 0) stealTimer = setTimeout(updateClock, 200);
+  };
+  ui.stealSeconds = Math.max(0, Math.ceil((stealDeadline - performance.now()) / 1000));
   const focus = readFocus();
   const qr = document.getElementById('room-qr');
   const horizontal = root.querySelector('.timeline.horizontal')?.scrollLeft ?? 0;
@@ -134,6 +146,7 @@ function render() {
   const timeline = root.querySelector('.timeline.horizontal');
   if (timeline) timeline.scrollLeft = horizontal;
   restoreFocus(focus);
+  if (ui.stealSeconds > 0) stealTimer = setTimeout(updateClock, 200);
 }
 
 function closeMug() {
@@ -182,6 +195,8 @@ function useResult(result) {
   const changed = result.revision !== revision || result.state.role !== state?.role;
   revision = result.revision;
   state = result.state;
+  const steal = state.round?.stealWindow;
+  stealDeadline = steal?.waiting.length ? performance.now() + Math.max(0, steal.until - steal.now) : 0;
   const round = state.round?.id ?? null;
   if (lastRound !== round) {
     ui.gap = null;
@@ -192,7 +207,7 @@ function useResult(result) {
   if (state.phase === 'steal' && ui.gap !== null && takenGaps(state).has(ui.gap)) {
     ui.gap = null;
   }
-  if (changed) render();
+  if (changed || (ui.stealSeconds > 0 && !stealDeadline)) render();
 }
 
 function notify(message, error = false) {
@@ -432,10 +447,10 @@ function manage() {
 function help() {
   showDialog('Zo speel je Mokje Gokje', `<ol>
     <li><b>Sluit aan.</b> Scan de QR-code met één telefoon per team. Ieder team begint met één kaart en twee munten.</li>
-    <li><b>Luister.</b> De DJ speelt het nummer in Spotify. Gebruik de Mokje Gokje-mix of voeg in de lobby een eigen Spotify-playlist toe.</li>
+    <li><b>Luister.</b> Open in de mix het nummer via Volgende nummer en start de muziek in Spotify. Bij een eigen playlist voert de DJ de kaartgegevens in.</li>
     <li><b>Plaats.</b> Het team dat aan de beurt is, kiest waar het nummer chronologisch hoort. Een gelijk jaar mag aan beide kanten.</li>
-    <li><b>Steel.</b> Andere teams kunnen één munt inzetten voor een vrij vak op dezelfde tijdlijn. Alleen als de eerste plaatsing fout is, kan een goede steelpoging de kaart winnen.</li>
-    <li><b>Onthul.</b> De host bepaalt of het spelende team een bonusmunt krijgt. Het eerste team dat het ingestelde kaartdoel haalt, wint.</li>
+    <li><b>Steel.</b> Andere teams hebben 12 seconden om een vrij vak te claimen voor één munt of te passen. Alleen als de eerste plaatsing fout is, kan een goede steelpoging de kaart winnen.</li>
+    <li><b>Uitslag.</b> De uitslag verschijnt zodra de steelkans sluit. De host kan het spelende team een bonusmunt geven. Het eerste team dat het ingestelde kaartdoel haalt, wint.</li>
   </ol>`);
 }
 
