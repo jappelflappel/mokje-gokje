@@ -6,7 +6,9 @@ Terugspoel is een Nederlandstalig muziektijdlijnspel voor twee tot acht teams. O
 
 ## Spotify
 
-Kies **Terugspoel-mix** voor 69 nummers of **Eigen playlist** en plak een Spotify-playlistlink. Elke Spotify-playlist die de afspelende gebruiker kan openen is geschikt. Open bij een beurt het DJ-scherm op de Mac of stuur de privé-DJ-link naar degene die de muziek afspeelt. In de mix opent de DJ de zoekopdracht in Spotify en start het nummer daar. In playlistmodus speelt de DJ een nummer uit de playlist en voert de titel, artiest en het uitgavejaar in. Sorteer op het jaar waarin de gekozen opname voor het eerst verscheen.
+Kies **Terugspoel-mix** voor 69 nummers. **Volgende nummer** opent de track in Spotify en start de plaatsing in Terugspoel. Op de Mac opent **⌘-klik** de link in een achtergrondtab. Start de muziek in Spotify. Teams plaatsen op de eigen telefoon of via de tijdlijn op het hostscherm.
+
+Voor **Eigen playlist** plak je de Spotify-playlistlink. De DJ speelt een nummer uit de playlist en voert de titel, artiest en het uitgavejaar in via het DJ-scherm. Sorteer op het jaar waarin de gekozen opname voor het eerst verscheen.
 
 Het spel gebruikt gewone links naar Spotify. Inloggen en afspelen gebeuren in de Spotify-app of webspeler. [Spotify Developer Policy](https://developer.spotify.com/policy)
 

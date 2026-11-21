@@ -89,6 +89,20 @@ function vinyl(playing, result) {
   </div>`;
 }
 
+function spotifyLink(url, label, style = 'soft', candidate = '') {
+  return `<a class="button ${style}" href="${h(url)}" target="_blank" rel="noopener noreferrer"${candidate
+    ? ` data-next-track="${h(candidate)}" aria-describedby="spotify-background"` : ''}>${h(label)}</a>`;
+}
+
+function nextControl(state) {
+  const next = state.spotifyNext;
+  if (next?.url) {
+    return `<div class="stage-actions">${spotifyLink(next.url, 'Volgende nummer', 'primary', next.candidate)}</div>
+      <p class="spotify-hint" id="spotify-background">⌘-klik opent Spotify op de achtergrond.</p>`;
+  }
+  return `<div class="stage-actions">${button(state.remaining === 0 ? 'Bekijk eindstand' : 'Volgende nummer', 'next')}</div>`;
+}
+
 function stageText(state, urls, ui) {
   const team = activeTeam(state);
   const result = state.round?.result;
@@ -99,18 +113,20 @@ function stageText(state, urls, ui) {
         <div class="stage-actions">${button('Start spel', 'start', 'primary', state.teams.length < 2)}</div>`;
     case 'ready':
       return `${badge('Aan de beurt', 'blue')}<h2>${h(team.name)}</h2>
-        <p>Trek een nummer voor dit team.</p>
-        <div class="stage-actions">${button('Trek nummer', 'next')}</div>`;
+        <p>${state.spotifyNext?.url ? 'Open het volgende nummer in Spotify.' : 'Trek een nummer voor dit team.'}</p>
+        ${nextControl(state)}`;
     case 'cue':
       return `${badge('Nummer klaar', 'blue')}<h2>Zet Spotify aan</h2>
-        <p>${h(team.name)} is aan de beurt. In het DJ-scherm staat wat je moet afspelen.</p>
-        <div class="stage-actions"><a class="button primary" href="${h(urls.dj)}" target="_blank" rel="noopener noreferrer">Open DJ-scherm</a>
-        ${state.settings.deck === 'mix' ? button('Plaatsen openen', 'open', 'soft') : ''}
+        <p>${h(team.name)} is aan de beurt. ${state.spotifyCurrent ? 'Start het nummer in Spotify.' : 'Gebruik het DJ-scherm om de playlist te bedienen.'}</p>
+        <div class="stage-actions">${state.spotifyCurrent ? spotifyLink(state.spotifyCurrent, 'Open Spotify', 'primary')
+          : `<a class="button primary" href="${h(urls.dj)}" target="_blank" rel="noopener noreferrer">Open DJ-scherm</a>`}
+        ${state.spotifyCurrent ? button('Plaatsen openen', 'open', 'soft') : ''}
         ${button('Sla nummer over', 'skip', 'text-button')}</div>`;
     case 'guess':
       return `${badge('Plaatsen', 'blue')}<h2>${h(team.name)}</h2>
-        <p>Dit team kiest op de telefoon waar het nummer op hun tijdlijn hoort.</p>
-        <div class="stage-actions">${button('Sla nummer over', 'skip', 'soft')}</div>`;
+        <p>Kies op de tijdlijn hieronder of op de teamtelefoon waar het nummer hoort.</p>
+        <div class="stage-actions">${state.spotifyCurrent ? spotifyLink(state.spotifyCurrent, 'Open Spotify') : ''}
+        ${button('Sla nummer over', 'skip', 'soft')}</div>`;
     case 'steal':
       return `${badge('Steelkans', 'amber')}<h2>Wie durft<br>te stelen?</h2>
         <p>${h(team.name)} heeft geplaatst. Andere teams kunnen voor één munt een ander vak claimen.</p>
@@ -121,7 +137,7 @@ function stageText(state, urls, ui) {
         <h2 class="reveal-year">${result.track.year}</h2>
         <p class="revealed-track"><b>${h(result.track.title)}</b><br>${h(result.track.artist)}</p>
         <p>${h(verdict(state, result))}${result.bonus ? ' Bonusmunt uitgedeeld.' : ''}</p>
-        <div class="stage-actions">${button(state.remaining === 0 ? 'Bekijk eindstand' : 'Volgende nummer', 'next')}</div>`;
+        ${nextControl(state)}`;
     case 'finished':
       return `${badge('Eindstand', 'green')}<h2>${h(winnerText(state))}</h2>
         <p>${state.winnerIds.length === 1 ? 'Wint Terugspoel!' : 'Delen de eerste plaats!'}</p>
@@ -247,7 +263,11 @@ export function hostView(state, urls, ui) {
           ${state.phase === 'lobby' ? setup(state, ui.setup) : ''}
           ${active && state.phase !== 'finished' ? `<section class="panel board" aria-labelledby="board-heading">
             <div class="panel-title"><h2 id="board-heading">Tijdlijn van ${h(active.name)}</h2><span>${active.cards} / ${state.settings.target}</span></div>
-            ${timeline(state, state.activeTimeline, { horizontal: true, showClaims: state.phase === 'steal' })}
+            ${timeline(state, state.activeTimeline, { horizontal: true, choose: state.phase === 'guess',
+              showClaims: state.phase === 'steal', selected: ui.gap })}
+            ${state.phase === 'guess' ? `<div class="board-actions">
+              ${button('Bevestig plaatsing', 'place', 'primary', ui.gap === null)}
+            </div>` : ''}
           </section>` : ''}
           ${history(state)}
         </div>

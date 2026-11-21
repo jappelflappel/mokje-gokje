@@ -31,6 +31,27 @@ test('invite codes and team recovery survive a round without disclosing credenti
   assert.equal(publicState(room, '').teams, undefined);
 });
 
+test('the one-click mix starts placement immediately and keeps the track hidden until reveal', () => {
+  const { room, host, teams } = fixture(2);
+  delete room.pendingTracks.at(-1).link; // A room created before tracks had Spotify links.
+  const nextTrack = publicState(room, room.hostToken).spotifyNext;
+  assert.match(nextTrack.url, /^https:\/\/open\.spotify\.com\/track\/[A-Za-z0-9]{22}$/u);
+  assert.equal(publicState(room, teams[0]).spotifyNext, undefined);
+  assert.throws(() => host('next', { candidate: 'mix-stale' }), /al geopend/);
+
+  host('next', { candidate: nextTrack.candidate });
+  assert.equal(room.phase, 'guess');
+  const secret = room.round.track;
+  assert.equal(publicState(room, room.hostToken).round.track, undefined);
+  assert.equal(publicState(room, teams[0]).spotifyCurrent, undefined);
+  const gap = secret.year < 1990 ? 0 : 1;
+  host('place', { gap });
+  assert.equal(room.phase, 'steal');
+  assert.equal(publicState(room, teams[0]).round.result, null);
+  host('reveal');
+  assert.equal(publicState(room, teams[0]).round.result.track.title, secret.title);
+});
+
 test('a different team can steal a misplaced card and the host can award one bonus', () => {
   const { room, host, team } = fixture();
   host('next');

@@ -1,4 +1,4 @@
-import { mix } from './tracks.mjs';
+import { mix, spotifyTrackLink } from './tracks.mjs';
 
 export const MAX_TEAMS = 8;
 export const ROOM_TTL = 3 * 24 * 60 * 60 * 1000;
@@ -136,8 +136,12 @@ function endByScore(room) {
   room.phase = 'finished';
 }
 
-function next(room) {
+function next(room, candidate) {
   requireThat(['ready', 'result'].includes(room.phase), 'Rond eerst het huidige nummer af.');
+  if (candidate !== undefined) {
+    requireThat(room.settings.deck === 'mix' && room.pendingTracks.at(-1)?.id === candidate,
+      'Dit nummer is al geopend. Gebruik het huidige nummer in het hostscherm.');
+  }
   if (room.settings.deck === 'mix' && !room.pendingTracks.length) {
     endByScore(room);
     return;
@@ -149,7 +153,7 @@ function next(room) {
     track: room.settings.deck === 'mix' ? room.pendingTracks.pop() : null,
     placement: null, steals: [], result: null
   };
-  room.phase = 'cue';
+  room.phase = candidate === undefined ? 'cue' : 'guess';
 }
 
 function openRound(room, data) {
@@ -232,7 +236,7 @@ function reveal(room, bonus) {
 }
 
 const roundActions = new Set(['open', 'skip', 'place', 'steal', 'reveal']);
-const hostActions = new Set(['settings', 'start', 'next', 'open', 'skip', 'reveal', 'finish', 'remove']);
+const hostActions = new Set(['settings', 'start', 'next', 'open', 'skip', 'place', 'reveal', 'finish', 'remove']);
 
 export function apply(room, token, data) {
   if (data.action === 'join') return join(room, data);
@@ -255,10 +259,10 @@ export function apply(room, token, data) {
       if (data.settings) settings(room, data.settings);
       start(room);
       break;
-    case 'next': next(room); break;
+    case 'next': next(room, data.candidate); break;
     case 'open': openRound(room, data); break;
     case 'skip': skip(room); break;
-    case 'place': place(room, actor.team, data.gap); break;
+    case 'place': place(room, actor.team ?? room.teams[room.turn], data.gap); break;
     case 'steal': steal(room, actor.team, data.gap); break;
     case 'reveal': reveal(room, data.bonus); break;
     case 'finish':
@@ -282,6 +286,10 @@ export function publicState(room, token) {
 
   const active = room.phase === 'lobby' ? null : room.teams[room.turn];
   const round = room.round;
+  const nextTrack = role === 'host' && room.settings.deck === 'mix' && ['ready', 'result'].includes(room.phase)
+    ? room.pendingTracks.at(-1) : null;
+  const currentLink = role === 'host' && room.settings.deck === 'mix' && round?.track
+    && ['cue', 'guess'].includes(room.phase) ? spotifyTrackLink(round.track) : '';
   return {
     role,
     code: room.code,
@@ -303,6 +311,8 @@ export function publicState(room, token) {
     } : null,
     ...(role === 'host' ? {
       djToken: room.djToken,
+      spotifyNext: nextTrack ? { candidate: nextTrack.id, url: spotifyTrackLink(nextTrack) } : null,
+      spotifyCurrent: currentLink,
       recoveries: room.teams.map(({ id, recovery }) => ({ id, recovery })),
       remaining: room.settings.deck === 'mix' ? room.pendingTracks.length : null
     } : {}),

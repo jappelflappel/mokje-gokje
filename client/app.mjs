@@ -459,6 +459,12 @@ function start() {
 }
 
 document.addEventListener('click', event => {
+  const nextTrack = event.target.closest('a[data-next-track]');
+  if (nextTrack) {
+    if (busy) event.preventDefault();
+    else move('next', { candidate: nextTrack.dataset.nextTrack });
+    return;
+  }
   const clicked = event.target.closest('button');
   if (!clicked || clicked.disabled) return;
   if (clicked.dataset.gap !== undefined && !busy) {

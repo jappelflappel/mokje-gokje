@@ -110,6 +110,7 @@ a { color: var(--accent); }
 .stage-copy h2 { font-size: clamp(2.25rem, 4.45vw, 4.65rem); font-weight: 780; line-height: .98; letter-spacing: -.073em; }
 .stage-copy p { max-width: 25ch; color: var(--muted); }
 .stage-copy .revealed-track { color: var(--ink); }
+.stage-copy .spotify-hint { max-width: 32ch; font-size: .86rem; }
 .stage-copy .reveal-year { font-size: clamp(3.45rem, 7vw, 6rem); color: var(--accent); font-variant-numeric: tabular-nums; }
 .stage-actions { margin-top: .35rem; display: flex; gap: .48rem; flex-wrap: wrap; }
 .stage-actions .primary { min-height: 3rem; }
@@ -268,6 +269,8 @@ fieldset legend { margin-bottom: .49rem; padding: 0; }
 .gap.selected .gap-symbol { color: var(--surface); background: var(--accent); }
 .claimed-gap { border: 1px solid var(--line); background: var(--fill); color: var(--muted); }
 .horizontal .claimed-gap { min-width: 5rem; max-width: 8.1rem; overflow-wrap: anywhere; }
+.horizontal .gap { flex: 0 0 7.7rem; scroll-snap-align: start; }
+.board-actions { display: flex; justify-content: flex-end; margin-top: .4rem; }
 .action-tray { position: fixed; bottom: 0; left: 0; right: 0; z-index: 3; background: var(--bar); border-top: 1px solid var(--line);
   -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%); padding: .66rem 1rem calc(.66rem + env(safe-area-inset-bottom)); }
 .tray-inner { max-width: 33rem; margin-inline: auto; display: flex; align-items: center; justify-content: space-between; gap: .65rem; }
